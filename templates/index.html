@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCB Ticket Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:#E8001C; --red-dim:rgba(232,0,28,0.12); --red-glow:rgba(232,0,28,0.3);
+    --gold:#C9A84C; --gold-dim:rgba(201,168,76,0.12);
+    --bg:#080808; --bg2:#111; --bg3:#181818;
+    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+    --text:#f0f0f0; --muted:#555; --muted2:#888;
+    --green:#16a34a; --green-dim:rgba(22,163,74,0.13); --green-glow:rgba(22,163,74,0.4);
+    --blue:rgba(59,130,246,0.15); --blue-t:#60a5fa;
+    --purple:rgba(168,85,247,0.15); --purple-t:#c084fc;
+    --amber:#d97706; --amber-dim:rgba(217,119,6,0.13);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-height:100vh;}
+  .wrap{max-width:860px;margin:0 auto;padding:32px 18px 60px;}
+
+  /* header */
+  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:14px;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:42px;height:42px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .logo-icon svg{width:24px;height:24px;fill:#fff;}
+  .logo h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:.02em;}
+  .logo p{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);letter-spacing:.07em;margin-top:2px;}
+  .hdr-btns{display:flex;gap:8px;flex-wrap:wrap;}
+
+  /* buttons */
+  .btn{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 16px;border-radius:6px;border:1px solid var(--border2);cursor:pointer;background:var(--bg3);color:var(--text);transition:all .15s;}
+  .btn:hover{background:var(--bg2);border-color:rgba(255,255,255,.22);}
+  .btn-red{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn-red:hover{background:#c0001a;}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--muted2);}
+  .btn-ghost:hover{color:var(--text);}
+
+  /* status */
+  .status{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px 17px;margin-bottom:24px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;}
+  .dot.on{animation:pulse 1.8s ease-in-out infinite;}
+  .dot.off{background:var(--muted);}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--green-glow)}50%{box-shadow:0 0 0 7px transparent}}
+  .status-txt{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2);flex:1;}
+  .status-txt strong{color:var(--green);}
+  .uptime{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+
+  /* config */
+  .cfg{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:22px;}
+  .cfg h3{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+  .cfg-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .cfg-field{flex:1;min-width:180px;}
+  .cfg-field label{font-size:10px;color:var(--muted2);letter-spacing:.06em;text-transform:uppercase;font-family:'DM Mono',monospace;display:block;margin-bottom:5px;}
+  .cfg-field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 11px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);outline:none;}
+  .cfg-field input:focus{border-color:var(--red);}
+  .saved{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-left:10px;opacity:0;transition:opacity .3s;}
+
+  /* layers */
+  .layers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;}
+  @media(max-width:560px){.layers{grid-template-columns:1fr;}}
+  .lcard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:17px;position:relative;overflow:hidden;}
+  .lcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+  .l1::before{background:var(--green);}
+  .l2::before{background:#3b82f6;}
+  .l3::before{background:var(--gold);}
+  .l4::before{background:#a855f7;}
+  .lcard.fired{border-color:var(--red);animation:redpulse 1s ease-in-out 3;}
+  @keyframes redpulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 18px var(--red-glow)}}
+  .lnum{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:.08em;}
+  .ltitle{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;margin-bottom:3px;}
+  .lsub{font-size:11px;color:var(--muted2);margin-bottom:12px;line-height:1.5;}
+  .badge{display:inline-block;font-size:10px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:4px;margin-bottom:12px;}
+  .bw{background:var(--green-dim);color:var(--green);}
+  .be{background:var(--red-dim);color:var(--red);}
+  .bp{background:var(--amber-dim);color:var(--amber);}
+  .lstats{display:flex;gap:16px;}
+  .stat-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;line-height:1;}
+  .gv{color:var(--green);} .rv{color:var(--red);}
+  .stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:1px;font-family:'DM Mono',monospace;}
+  .ltime{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:10px;}
+
+  /* alerts */
+  .af-hdr{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .acnt{background:var(--red);color:#fff;font-size:11px;padding:2px 7px;border-radius:20px;font-family:'DM Mono',monospace;}
+  .empty{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:30px;text-align:center;color:var(--muted);font-family:'DM Mono',monospace;font-size:12px;}
+  .aitem{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:10px;padding:13px 15px;margin-bottom:9px;animation:slidein .3s ease;}
+  @keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .ameta{display:flex;align-items:center;gap:9px;margin-bottom:5px;}
+  .alayer{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;}
+  .al-api{background:var(--green-dim);color:var(--green);}
+  .al-dom{background:var(--blue);color:var(--blue-t);}
+  .al-keyword{background:var(--gold-dim);color:var(--gold);}
+  .al-social{background:var(--purple);color:var(--purple-t);}
+  .al-test{background:var(--amber-dim);color:var(--amber);}
+  .atime{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+  .amsg{font-size:12px;color:var(--muted2);line-height:1.5;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V7l-9-5z"/></svg>
+      </div>
+      <div>
+        <h1>RCB Monitor</h1>
+        <p>4-layer ticket detection · Render</p>
+      </div>
+    </div>
+    <div class="hdr-btns">
+      <button class="btn btn-ghost" onclick="testAlert()">Send Test Alert</button>
+      <button class="btn" id="tog" onclick="toggle()">Pause</button>
+    </div>
+  </div>
+
+  <div class="status">
+    <div class="dot on" id="dot"></div>
+    <div class="status-txt" id="stxt"><strong>Monitoring active</strong> — all 4 layers running</div>
+    <div class="uptime" id="upt"></div>
+  </div>
+
+  <div class="cfg">
+    <h3>Target URLs</h3>
+    <div class="cfg-row">
+      <div class="cfg-field">
+        <label>Primary URL</label>
+        <input id="u1" value="https://rcb.iplt20.com/">
+      </div>
+      <div class="cfg-field">
+        <label>Secondary URL</label>
+        <input id="u2" value="https://rcb.iplt20.com/matches">
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn" style="font-size:12px;padding:7px 14px" onclick="saveConfig()">Save & Apply</button>
+      <span class="saved" id="sv">Saved!</span>
+    </div>
+  </div>
+
+  <div class="layers">
+    <div class="lcard l1" id="c-api">
+      <div class="lnum">LAYER 1</div>
+      <div class="ltitle">API Monitor</div>
+      <div class="lsub">Hits URLs every 5 sec. Catches raw response changes instantly.</div>
+      <div class="badge bw" id="b-api">watching</div>
+      <div class="lstats">
+        <div><div class="stat-val gv" id="chk-api">0</div><div class="stat-lbl">checks</div></div>
+        <div><div class="stat-val rv" id="alt-api">0</div><div class="stat-lbl">alerts</div></div>
+      </div>
+      <div class="ltime" id="t-api">Last check: —</div>
+    </div>
+    <div class="lcard l2" id="c-dom">
+      <div class="lnum">LAYER 2</div>
+      <div class="ltitle">DOM Monitor</div>
+      <div class="lsub">Scans full page structure every 60 sec. Detects new buttons or sections.</div>
+      <div class="badge bw" id="b-dom">watching</div>
+      <div class="lstats">
+        <div><div class="stat-val gv" id="chk-dom">0</div><div class="stat-lbl">checks</div></div>
+        <div><div class="stat-val rv" id="alt-dom">0</div><div class="stat-lbl">alerts</div></div>
+      </div>
+      <div class="ltime" id="t-dom">Last check: —</div>
+    </div>
+    <div class="lcard l3" id="c-keyword">
+      <div class="lnum">LAYER 3</div>
+      <div class="ltitle">Keyword Scanner</div>
+      <div class="lsub">Watches for "Buy Now", "Book Tickets", "₹2300" on page.</div>
+      <div class="badge bw" id="b-keyword">watching</div>
+      <div class="lstats">
+        <div><div class="stat-val gv" id="chk-keyword">0</div><div class="stat-lbl">checks</div></div>
+        <div><div class="stat-val rv" id="alt-keyword">0</div><div class="stat-lbl">alerts</div></div>
+      </div>
+      <div class="ltime" id="t-keyword">Last check: —</div>
+    </div>
+    <div class="lcard l4" id="c-social">
+      <div class="lnum">LAYER 4</div>
+      <div class="ltitle">Social Listener</div>
+      <div class="lsub">Monitors @RCBTweets every 30 sec for ticket keywords.</div>
+      <div class="badge bw" id="b-social">watching</div>
+      <div class="lstats">
+        <div><div class="stat-val gv" id="chk-social">0</div><div class="stat-lbl">checks</div></div>
+        <div><div class="stat-val rv" id="alt-social">0</div><div class="stat-lbl">alerts</div></div>
+      </div>
+      <div class="ltime" id="t-social">Last check: —</div>
+    </div>
+  </div>
+
+  <div class="af-hdr">Alert Feed <span class="acnt" id="acnt">0</span></div>
+  <div id="feed"><div class="empty">No alerts yet — system is watching</div></div>
+
+</div>
+<script>
+let start = Date.now(), prevCount = 0;
+function pad(n){return String(n).padStart(2,'0');}
+setInterval(()=>{
+  let s=Math.floor((Date.now()-start)/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+  document.getElementById('upt').textContent=`Uptime: ${pad(h)}:${pad(m)}:${pad(sc)}`;
+},1000);
+
+async function fetchState(){
+  try{
+    const d=await(await fetch('/api/state')).json();
+    const L=d.layers, mon=d.monitoring;
+    document.getElementById('dot').className='dot '+(mon?'on':'off');
+    document.getElementById('stxt').innerHTML=mon
+      ?'<strong>Monitoring active</strong> — all 4 layers running'
+      :'<strong>Paused</strong> — monitoring stopped';
+    document.getElementById('tog').textContent=mon?'Pause':'Resume';
+    ['api','dom','keyword','social'].forEach(k=>{
+      const l=L[k];
+      document.getElementById(`chk-${k}`).textContent=l.checks;
+      document.getElementById(`alt-${k}`).textContent=l.alerts;
+      document.getElementById(`t-${k}`).textContent=l.last_check?`Last check: ${l.last_check}`:'Last check: —';
+      const b=document.getElementById(`b-${k}`);
+      b.textContent=l.status;
+      b.className='badge '+(l.status==='watching'?'bw':l.status==='error'?'be':'bp');
+    });
+    const alerts=d.alerts||[];
+    document.getElementById('acnt').textContent=alerts.length;
+    if(alerts.length>prevCount){prevCount=alerts.length;}
+    document.getElementById('feed').innerHTML=alerts.length===0
+      ?'<div class="empty">No alerts yet — system is watching</div>'
+      :alerts.map(a=>`
+        <div class="aitem">
+          <div class="ameta">
+            <span class="alayer al-${a.layer}">${a.layer.toUpperCase()}</span>
+            <span class="atime">${a.time}</span>
+          </div>
+          <div class="amsg">${a.message}</div>
+        </div>`).join('');
+  }catch(e){console.error(e);}
+}
+async function toggle(){await fetch('/api/toggle',{method:'POST'});fetchState();}
+async function testAlert(){await fetch('/api/test',{method:'POST'});setTimeout(fetchState,800);}
+async function saveConfig(){
+  await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url1:document.getElementById('u1').value,url2:document.getElementById('u2').value})});
+  const s=document.getElementById('sv');s.style.opacity='1';setTimeout(()=>s.style.opacity='0',2000);
+}
+setInterval(fetchState,3000);fetchState();
+</script>
+</body>
+</html>
